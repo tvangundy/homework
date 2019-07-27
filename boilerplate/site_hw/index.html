@@ -1,0 +1,202 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<title>Homework</title>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+		<meta name="description" content="" />
+		<meta name="keywords" content="" />
+        
+    <script type="text/javascript">
+
+      function buildData() {
+                
+          var data = {};
+          
+          data.id = document.getElementById("id").value;
+          data.firstName = document.getElementById("firstName").value;
+          data.lastName = document.getElementById("lastName").value;
+          data.hireDate = document.getElementById("hireDate").value;
+          data.role = document.getElementById("role").value;
+
+          var json_string = JSON.stringify(data);
+
+          // alert (json_string);
+
+          return json_string;
+      }
+
+      function xhttp_onload() {
+        if (xhttp.status != 200) { // analyze HTTP status of the response
+          alert(`Error ${xhttp.status}: ${xhttp.statusText}`); // e.g. 404: Not Found
+        } else { // show the result
+          alert(`Done, got ${xhttp.response.length} bytes`); // responseText is the server
+        }
+      };
+
+      function xhttp_onprogress (event) {
+        if (event.lengthComputable) {
+          alert(`Received ${event.loaded} of ${event.total} bytes`);
+        } else {
+          alert(`Received ${event.loaded} bytes`); // no Content-Length
+        }
+
+      };
+
+      function xhttp_onerror () {
+        alert("Request failed");
+      };
+
+      function updateFields() {
+
+        if (this.readyState == 4 && this.status == 200) {
+
+            if (this.responseText != "") {
+
+                var obj = JSON.parse(this.responseText);
+
+                document.getElementById("id").value = obj.id;
+                document.getElementById("firstName").value = obj.firstName;
+                document.getElementById("lastName").value = obj.lastName;
+                document.getElementById("hireDate").value = obj.hireDate;
+                document.getElementById("role").value = obj.role;
+            }
+        }
+      }
+
+      function updateTable() {
+      
+          if (this.readyState == 4 && this.status == 200) {
+      
+            //  alert (this.responseText);
+      
+             var customers = new Array();
+             var obj = JSON.parse(this.responseText);
+      
+             customers.push(["id", "firstName", "lastName", "hireDate", "role"]);              
+      
+             obj.forEach(element => {
+               customers.push([element.id, element.firstName, element.lastName, element.hireDate, element.role]);
+             });
+      
+             //create a HTML Table element.
+             var table = document.createElement("TABLE");
+             table.border = "1";
+      
+             //Get the count of columns.
+             var columnCount = customers[0].length;
+      
+             //Add the header row.
+             var row = table.insertRow(-1);
+             for (var i = 0; i < columnCount; i++) {
+                 var headerCell = document.createElement("TH");
+                 headerCell.innerHTML = customers[0][i];
+                 row.appendChild(headerCell);
+             }
+      
+             //Add the data rows.
+             for (var i = 1; i < customers.length; i++) {
+                 row = table.insertRow(-1);
+                 for (var j = 0; j < columnCount; j++) {
+                     var cell = row.insertCell(-1);
+                     cell.innerHTML = customers[i][j];
+                 }
+             }
+      
+             var dvTable = document.getElementById("dvTable");
+             dvTable.innerHTML = "";
+             dvTable.appendChild(table);
+          }
+      };
+      
+      function create() {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = updateTable;
+      
+          var json = buildData ();
+      
+          xhttp.open("POST", "http://localhost:3000/api/employees/", true);
+          xhttp.setRequestHeader("Content-type", "application/json");
+          xhttp.send(json);
+      }
+            
+      function replaceByID() {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = updateFields;
+          
+          var json = buildData ();
+      
+          xhttp.open("PUT", "http://localhost:3000/api/employees/:id", true);
+          xhttp.setRequestHeader("Content-type", "application/json");
+          xhttp.send(json);
+      }   
+
+      function getByID() {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = updateFields;
+          // xhttp.onload = xhttp_onload
+          // xhttp.onprogress = xhttp_onprogress
+          // xhttp.onerror = xhttp_onerror
+
+          var json = buildData ();
+
+          // MTV NOTE: 
+          //
+          // This is a workaround.
+          //
+          // The GET version of this command works when called from curl
+          // but it does not work when called from the browser (Safari or Chrome)
+          //            
+          xhttp.open("POST", "http://localhost:3000/api/employees/getByID", true);
+          // xhttp.open("GET", "http://localhost:3000/api/employees/:id", true);
+          xhttp.setRequestHeader("Content-type", "application/json");
+          xhttp.send(json);
+      }
+
+      function getAll() {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = updateTable;
+
+          xhttp.open("GET", "http://localhost:3000/api/employees", true);
+          xhttp.setRequestHeader("Content-type", "application/json");
+          xhttp.send("");
+      }
+            
+      function deleteByID() {
+          var xhttp = new XMLHttpRequest();
+          xhttp.onreadystatechange = updateFields;
+        
+          var json = buildData ();
+
+          xhttp.open("DELETE", "http://localhost:3000/api/employees/:id", true);
+          xhttp.setRequestHeader("Content-type", "application/json");
+          xhttp.send(json);
+      }
+    </script>
+
+  </head>
+  <body >
+    <div>
+      <button type="submit" onclick="getAll()">getAll</button>
+      <button type="submit" onclick="create()">create</button>
+      <button type="submit" onclick="replaceByID()">replaceByID</button>
+      <button type="submit" onclick="getByID()">getByID</button>
+      <button type="submit" onclick="deleteByID()">deleteByID</button>
+      <form>
+          id:<br>
+          <input id="id" type="text" name="id"><br>
+          firstName:<br>
+          <input id="firstName" type="text" name="firstName"><br>
+          lastName:<br>
+          <input id="lastName" type="text" name="lastName"><br>
+          hireDate:<br>
+          <input id="hireDate" type="text" name="hireDate"><br>
+          role:<br>
+          <input id="role" type="text" name="role"><br>
+      </form>
+    </div>
+    <hr />
+    <div id="dvTable"></div>
+
+  </body>
+</html>
+

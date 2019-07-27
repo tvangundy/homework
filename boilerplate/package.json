@@ -1,0 +1,13 @@
+{
+  "name": "takehomerest",
+  "version": "0.0.1",
+  "private": true,
+  "main": "app.js",
+  "scripts": {
+    "start": "node app"
+  },
+  "dependencies": {
+    "debug": "^4.1.1",
+    "express": "~4.16.1"
+  }
+}
