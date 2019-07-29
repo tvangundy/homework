@@ -5,11 +5,13 @@ const check = require('check-types');
 const date = require('date-and-time');
 const express = require('express');
 const router = express.Router();
-const db_a = require('debug')('employee:db_a')
-  , db_b = require('debug')('employee:db_b')
+const db_api_calls = require('debug')('employee:db_api_calls')
   , db_check = require('debug')('employee:db_check')
   , db_create = require('debug')('employee:db_create')
-  , db_c = require('debug')('employee:db_c');
+  , db_replace_by_id = require('debug')('employee:db_replace_by_id')
+  , db_get_by_id = require('debug')('employee:db_get_by_id')
+  , db_getall = require('debug')('employee:db_getall')
+  , db_delete_by_id = require('debug')('employee:db_delete_by_id');
 
 // Temporary hack to limit randomization of id's
 // this can cause problems if the id's start to be reused
@@ -36,6 +38,23 @@ const EMPLOYEE_NOT_FOUND = {
 
 };
 
+const EMPLOYEE_NOT_FOUND_USER = {
+  "id": "EMPLOYEE_NOT_FOUND_USER",
+    "return_json": {
+    "status" : "475",
+    "message" : "Could not find employee with id : "
+  }
+
+};
+
+const FAILED_TO_CREATE_RECORD = {
+  "id": "FAILED_TO_CREATE_RECORD",
+    "return_json": {
+    "status" : "552",
+    "message" : "Internal error - unable to create record : "
+  }
+};
+
 const ERROR_CODES = [
     {"id": "default",
       "return_json": {
@@ -52,26 +71,42 @@ const ERROR_CODES = [
       "status" : "452",
       "message" : "Not a string in field : "
     }},
-    {"id": "INVALID_DATE_FORMAT",
+    {"id": "INVALID_DATE_FORMAT_DASHES",
       "return_json": {
       "status" : "453",
+      "message" : "Invalid date format, should be YYYY-MM-DD : "
+    }},
+    {"id": "INVALID_DATE_FORMAT",
+      "return_json": {
+      "status" : "454",
       "message" : "Invalid date format : "
     }},
     {"id": "INVALID_DATE",
       "return_json": {
-      "status" : "454",
+      "status" : "455",
       "message" : "Invalid date : "
     }},
+    {"id": "INVALID_FUTURE_DATE",
+      "return_json": {
+      "status" : "456",
+      "message" : "Invalid date, it's in the future : "
+    }},  
     {"id": "INVALID_ROLE",
       "return_json": {
-      "status" : "455",
+      "status" : "457",
       "message" : "Invalid role : "
     }},
     {"id": "INVALID_NUMBER_OF_CEOS",
       "return_json": {
-      "status" : "456",
+      "status" : "458",
       "message" : "Too many CEOS : already found - "
+    }},
+    {"id": "MISSING_FIELD_IN_MESSAGE",
+      "return_json": {
+      "status" : "459",
+      "message" : "Missing field in message : "
     }}
+        
   ];
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -90,8 +125,34 @@ function lookup_error_code_by_id_async (id, callback) {
     }
   }
 
-  callback(return_value);
+  if (!return_value) {
+    callback (null);
+  } else {
+    callback(return_value);
+  }
 }
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// Function: create_err
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function create_err (error_code, message, callback) {
+
+  lookup_error_code_by_id_async (error_code, function (err) {
+      
+    if (err) {
+      let newErr = JSON.parse(JSON.stringify(err));
+      newErr.message = newErr.message + message;
+  
+      callback (newErr);
+    } else {
+      callback (ERROR_CODE_NOT_FOUND);
+    }
+  });        
+}
+
 
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -101,25 +162,24 @@ function lookup_error_code_by_id_async (id, callback) {
 //////////////////////////////////////////////////////////////////////////////////////////
 function find_record_by_id (const_array, id, callback) {
 
-  lookup_error_code_by_id_async("RECORD_NOT_FOUND", function (err) {
+  var err = null;
+  var employee = null;
 
-    if (err) {
-      var employee = null;
-      for (var i = 0; i < const_array.length; i++) {
-  
-        if (const_array[i].id == id) {
-          employee = const_array[i];
-          err = null;
-          break;
-        }
-      }
-    
-      callback (err, employee);
-  
-    } else {
-      callback (ERROR_CODE_NOT_FOUND, null)
+  for (var i = 0; i < const_array.length; i++) {
+
+    if (const_array[i].id == id) {
+      employee = const_array[i];
+      break;
     }
-  });
+  }
+
+  if (employee) {
+    callback (err, employee);
+  } else {
+    create_err ("RECORD_NOT_FOUND", "", function (err) {
+      callback (err, null);
+    });
+  }  
 }
 
 
@@ -132,209 +192,175 @@ function validateRequest (req, res, id_only, callback) {
 
   var err = null;
 
-  db_b ("---- validateRequest");
-  db_b ("req.method = " + req.method);
-  db_b (JSON.stringify(req.body));
-
   // TODO: Check that the req.body is present and valid
   // Check that req.body is available
   // if(isEmpty(req.body)) {
   //   console.log('Object missing');
   // }
-//   if (Object.keys(req.body).length === 0) {
-//     // Do something
-//  }
+  //   if (Object.keys(req.body).length === 0) {
+  //     // Do something
+  //  }
 
-  lookup_error_code_by_id_async ("NOT_A_STRING", function (err) {
-    
-    if (err) {
+  var failed_key = null;
 
-      var error = false;
+  // --- STRING CHECK ---
+  // Since we can only process strings, just make sure everything is a string
+  for (var key in req.body) {
 
-      // --- STRING CHECK ---
-      // Since we can only process strings, just make sure everything is a string
-      for (var key in req.body) {
+    if (!failed_key && req.body.hasOwnProperty(key)) {
 
-        if (!error && req.body.hasOwnProperty(key)) {
-
-          if (id_only) {
-            if ((key == "id") && check.string(req.body[key])) {
-                db_check ("STRING CHECK: passed for id_only check using key " + key); 
-            }
+      if (id_only) {
+        if (key == "id") {
+          if (check.string(req.body[key])) {
+            db_check ("STRING CHECK: passed for id_only check using key " + key); 
           } else {
-            if (check.string(req.body[key])) {
-              db_check ("STRING CHECK: passed for key " + key);
-            } else {
-              error = true;
-  
-              let newErr = JSON.parse(JSON.stringify(err));
-              newErr.message = newErr.message + key;
-  
-              err = newErr;
-              db_check ("STRING CHECK: failed for " + key);
-            }    
-          }  
-        }
+            failed_key = key;
+          }
+        } else {
+          if (check.string(req.body[key])) {
+             db_check ("STRING CHECK: passed for key " + key);
+          } else {
+            failed_key = key;
+            db_check ("STRING CHECK: failed for " + key);
+          }    
+        }  
       }
-      if (error == false) {
-        err = null;
-        db_check ("STRING CHECK: pass");
-      }
+    }
+  }
 
+  if (failed_key) {
+
+    // STRING CHECK FAILED
+    db_check ("STRING CHECK FAILED: failed for " + failed_key);
+
+    create_err ("NOT_A_STRING", failed_key, function (err) {
+      callback (err, null);
+    });
+
+  } else if (id_only) {
+
+      // STRING_CHECK PASSED for id_only checking
+      db_check ("STRING CHECK: pass");
+      callback (null);
+  } else {
+   
+    // HIREDATE CHECK
+    if ("hireDate" in req.body) {
       
-      if (!err && !id_only) {
+      // - hireDate (YYYY-MM-DD format must be in the past)
 
-        // --- HIREDATE FORMAT CHECK ---
-        lookup_error_code_by_id_async ("INVALID_DATE_FORMAT", function (err) {
+      var split_date = req.body.hireDate.split('-');
+      // NOTE: Might be ok to just let hireDate just be a number, like year only
+      //       but i'd think we would want to make sure there were dashes in the
+      //       date
+      if (split_date.length == 3) {
 
-          if (err) {
+        if (date.isValid(req.body.hireDate, 'YYYY-MM-DD')) {
 
-            if ("hireDate" in req.body) {
-        
-              // - hireDate (YYYY-MM-DD format must be in the past)
+          db_check ("HIREDATE DATE CHECK: pass")
 
-              var split_date = req.body.hireDate.split('-');
-              // NOTE: Might be ok to just let hireDate just be a number, like year only
-              //       but i'd think we would want to make sure there were dashes in the
-              //       date
-              if (split_date.length == 3) {
+          // Check the date is in the past
+          const now = new Date();
+          const received_date = new Date(date.parse(req.body.hireDate, 'YYYY-MM-DD'));
+      
+          if (date.subtract(now, received_date).toMilliseconds() >= 0) {
+            
+            db_check ("HIREDATE DATE CHECK: pass")
 
-                if (date.isValid(req.body.hireDate, 'YYYY-MM-DD')) {
-        
-                  db_check ("HIREDATE FORMAT CHECK: pass")
-  
-                  // --- HIREDATE DATE CHECK ---
-                  lookup_error_code_by_id_async ("INVALID_DATE", function (err) {
-  
-                    if (err) {
-                      
-                      // Check the date is in the past
-                      const now = new Date();
-                      const received_date = new Date(date.parse(req.body.hireDate, 'YYYY-MM-DD'));
-              
-                      if (date.subtract(now, received_date).toMilliseconds() >= 0) {
-                        
-                        db_check ("HIREDATE DATE CHECK: pass")
-  
-                        // --- ROLE CHECK ---
-                        lookup_error_code_by_id_async ("INVALID_ROLE", function (err) {
-                          
-                          if (err) {
-  
-                            // role
-                            if ("role" in req.body) {
-                        
-                              // Check role is one of 
-                              const valid_roles = ["CEO", "VP", "MANAGER", "LACKEY"];
-                      
-                              if (valid_roles.includes (req.body.role) ) {
-                      
-                                db_check ("ROLE CHECK: passed ");
-  
-                                if (req.body.role == "CEO") {
-                                  // --- CEO COUNT CHECK ---
-                                  lookup_error_code_by_id_async ("INVALID_NUMBER_OF_CEOS", function (err) {
-    
-                                    if (err) {
-                                      
-                                      // Do CEO check if the role is CEO and the command is create
-                                      // Check only one CEO is in the list
-                                      if ((req.body.role == "CEO") && (req.method == 'POST')) {
-    
-                                        var ceo_count = 0;
-                                        for (var i = 0; i < DATABASE.length; i++) {
-                                          if (DATABASE[i].role == "CEO") {
-                                            ceo_count = ceo_count + 1;
-                                          }
-                                        }
-                            
-                                        // Check number of CEOS
-                                        if (ceo_count == 0) {
-                                          db_check ("CEO COUNT CHECK: passed ");
-                                          callback (null);
-    
-                                        } else {
-                                          let newErr = JSON.parse(JSON.stringify(err));
-    
-                                          newErr.message = newErr.message + ceo_count.toString();
-                                          err = newErr;
-                                          db_check ("CEO COUNT CHECK: failed: ceo_count = " + ceo_count.toString());
-                                          callback (newErr);
-                                        }
-                                      } else {
-                                        db_check ("CEO COUNT CHECK: passed ");
-                                        callback (null);
-                                      }
-    
-                                    } else {
-                                      callback (ERROR_CODE_NOT_FOUND)
-                                    }
-                                  });
-                                } else {
-                                  callback (null);
-                                }  
-                              } else {
-                                let newErr = JSON.parse(JSON.stringify(err));
-  
-                                newErr.message = newErr.message + req.body.role;
-  
-                                db_check ("ROLE CHECK: failed on " + req.body.role);
-                                callback (newErr);
-                              }
-                            } else {
-                              callback (ERROR_CODE_NOT_FOUND);
-                            }
-                          } else {
-                            callback (ERROR_CODE_NOT_FOUND);
-                          }
-                        });
-                      } else {
-                        let newErr = JSON.parse(JSON.stringify(err));
-                        newErr.message = newErr.message + req.body.hireDate;
-                        db_check ("HIREDATE DATE CHECK: failed on " + req.body.hireDate);                      
-                        callback (newErr);                    
-                        }
-                    } else {
-                      callback (ERROR_CODE_NOT_FOUND);
+            // role
+            if ("role" in req.body) {
+          
+              // Check role is one of 
+              const valid_roles = ["CEO", "VP", "MANAGER", "LACKEY"];
+          
+              if (valid_roles.includes (req.body.role) ) {
+          
+                db_check ("ROLE CHECK: passed ");
+
+                if (req.body.role == "CEO") {
+                  // Do CEO check if the role is CEO and the command is create
+                  // Check only one CEO is in the list
+                  if ((req.body.role == "CEO") && (req.method == 'POST')) {
+
+                    var ceo_count = 0;
+                    for (var i = 0; i < DATABASE.length; i++) {
+                      if (DATABASE[i].role == "CEO") {
+                        ceo_count = ceo_count + 1;
+                      }
                     }
-                  });
-                  
+            
+                    // Check number of CEOS
+                    if (ceo_count == 0) {
+                      db_check ("CEO COUNT CHECK: passed ");
+                      callback (null);
+
+                    } else {
+                      // --- CEO COUNT CHECK FAILED ---
+                      db_check ("CEO COUNT CHECK: failed: ceo_count = " + ceo_count.toString());
+
+                      create_err ("INVALID_NUMBER_OF_CEOS", ceo_count.toString(), function (err) {
+                        callback (err, null);
+                      });                  
+                    }
+                  } else {
+                    db_check ("CEO COUNT CHECK: passed ");
+                    callback (null);
+                  }                  
                 } else {
-                  let newErr = JSON.parse(JSON.stringify(err));
-                  newErr.message = newErr.message + req.body.hireDate;
-  
-                  db_check ("HIREDATE FORMAT CHECK: failed for " + req.body.hireDate);
-  
-                  callback (newErr);
-                }
+                  db_check ("ROLE CHECK: passed ");
+                  callback (null);
+                }  
               } else {
-                let newErr = JSON.parse(JSON.stringify(err));
-                newErr.message = newErr.message + req.body.hireDate;
 
-                db_check ("HIREDATE FORMAT CHECK: failed for " + req.body.hireDate);
+                // --- ROLE CHECK FAILED ---
+                db_check ("ROLE CHECK: failed on " + req.body.role);
 
-                callback (newErr);
+                create_err ("INVALID_ROLE", req.body.role, function (err) {
+                  callback (err, null);
+                });                  
               }
             } else {
-              // TODO: Handle case where the hireDate is not in the body
+
+                // --- MISSING ROLE ---
+                db_check ("ROLE CHECK: role is missing ");
+
+                create_err ("MISSING_FIELD_IN_MESSAGE", "role", function (err) {
+                  callback (err, null);
+                });                  
             }
           } else {
-            callback (ERROR_CODE_NOT_FOUND);
-          }
-        });
-      } else if (err) {
-        // STRING_CHECK Failed
-        callback (err);
-      } else {
-        // STRING_CHECK for id_only passed
-        callback (null);
-      }
-    
-    } else {
-      callback (ERROR_CODE_NOT_FOUND)
-    }
+            // --- HIREDATE DATE CHECK FAILED ---
+            db_check ("HIREDATE DATE CHECK: failed on " + req.body.hireDate);                      
 
-  });
+            create_err ("INVALID_FUTURE_DATE", req.body.hireDate, function (err) {
+              callback (err, null);
+            });                          
+          }          
+        } else {
+          // --- HIREDATE FORMAT CHECK FAILED ---
+          db_check ("HIREDATE FORMAT CHECK: failed for " + req.body.hireDate);
+
+          create_err ("INVALID_DATE", req.body.hireDate, function (err) {
+            callback (err, null);
+          });                          
+        }
+      } else {
+        // --- HIREDATE FORMAT DASHES CHECK FAILED ---
+        db_check ("HIREDATE FORMAT DASHES CHECK: failed for " + req.body.hireDate);
+    
+        create_err ("INVALID_DATE_FORMAT_DASHES", req.body.hireDate, function (err) {
+          callback (err, null);
+        });                          
+      }
+    } else {
+      // --- HIREDATE FIELD MISSING ---
+      db_check ("HIREDATE FIELD MISSING CHECK: failed for " + req.body.hireDate);
+
+      create_err ("MISSING_FIELD_IN_MESSAGE", "hireDate", function (err) {
+        callback (err, null);
+      });                          
+    }    
+  }
 }
 
 
@@ -363,6 +389,12 @@ function createEmployeeRecord (req, res, callback) {
 
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// API Functions
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+
 
 // CREATE
 //
@@ -370,8 +402,8 @@ function createEmployeeRecord (req, res, callback) {
 //
 router.post('/', function(req, res) {
 
-  db_create("CREATE : " + req.method + ' ' + req.url);
-  db_create("CREATE : " + JSON.stringify(req.body));
+  db_api_calls("CREATE : " + req.method + ' ' + req.url);
+  db_api_calls("CREATE : " + JSON.stringify(req.body));
 
   validateRequest (req, res, false, function (err) {
 
@@ -387,7 +419,7 @@ router.post('/', function(req, res) {
     
             return res.end(utils.db_print_json (db_create, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_create, "res.end", FAILED_TO_CREATE_RECORD));
           }
     
         } else {
@@ -409,8 +441,8 @@ router.post('/', function(req, res) {
 //
 router.put('/:id', function(req, res) {
 
-  db_b("REPLACE_BY_ID : " + req.method + ' ' + req.url);
-  db_b("REPLACE_BY_ID : " + JSON.stringify(req.body));
+  db_api_calls("REPLACE_BY_ID : " + req.method + ' ' + req.url);
+  db_api_calls("REPLACE_BY_ID : " + JSON.stringify(req.body));
 
   validateRequest (req, res, false, function (err) {
 
@@ -423,25 +455,23 @@ router.put('/:id', function(req, res) {
             // Overwrite the default id that was generated 
             employee.id = req.body.id;
       
-            utils.print_employee(db_b, employee);
+            utils.replace_item_in_const_array_by_id (DATABASE, employee, function (err, item) {
       
-            utils.replace_item_in_const_array_by_id (DATABASE, employee, function (err) {
-      
-              if (!err) {
-                return res.end (utils.db_print_json (db_create, "res.end", employee));
+              if (item) {
+                return res.end (utils.db_print_json (db_replace_by_id, "res.end", item));
               } else {
-                return res.end (utils.db_print_json (db_create, "res.end", err));        
+                return res.end (utils.db_print_json (db_replace_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER));
               }
             });
           } else {
-            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_replace_by_id, "res.end", FAILED_TO_CREATE_RECORD));
           }        
         } else {
-          return res.end (utils.db_print_json (db_create, "res.end", err));        
+          return res.end (utils.db_print_json (db_replace_by_id, "res.end", err));        
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_replace_by_id, "res.end", err));
     }
   });
 });
@@ -473,8 +503,8 @@ router.get('/:id', function(req, res) {
   var err = true;
   var employee = null;
 
-  db_b("GET_BY_ID : " + req.method + ' ' + req.url);
-  db_b("GET_BY_ID : " + JSON.stringify(req.body));
+  db_api_calls("GET_BY_ID : " + req.method + ' ' + req.url);
+  db_api_calls("GET_BY_ID : " + JSON.stringify(req.body));
 
   validateRequest (req, res, true, function (err) {
 
@@ -483,16 +513,16 @@ router.get('/:id', function(req, res) {
       find_record_by_id (DATABASE, req.body.id, function (err, employee) {
         if (!err) {
           if (employee) {
-            return res.end (JSON.stringify(employee));
+            return res.end (utils.db_print_json (db_get_by_id, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND));
           }
         } else {
-          return res.end(utils.db_print_json (db_create, "res.end", err));
+          return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
     }
   });
 });
@@ -501,10 +531,8 @@ router.get('/:id', function(req, res) {
 //
 router.post('/getbyid', function(req, res) {
 
-  db_b("GET_BY_IDX : " + req.method + ' ' + req.url);
-  db_b("GET_BY_IDX : " + JSON.stringify(req.body));
-
-  db_b("GET_BY_IDX : calling find_record_by_id");
+  db_api_calls("GET_BY_IDX : " + req.method + ' ' + req.url);
+  db_api_calls("GET_BY_IDX : " + JSON.stringify(req.body));
 
   validateRequest (req, res, true, function (err) {
 
@@ -513,16 +541,16 @@ router.post('/getbyid', function(req, res) {
       find_record_by_id (DATABASE, req.body.id, function (err, employee) {
         if (!err) {
           if (employee) {
-            return res.end (JSON.stringify(employee));
+            return res.end (utils.db_print_json (db_get_by_id, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND));
           }
         } else {
-          return res.end(utils.db_print_json (db_create, "res.end", err));
+          return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
     }
   });
 });
@@ -534,11 +562,11 @@ router.post('/getbyid', function(req, res) {
 //
 router.get('/', function(req, res) {
 
-  db_a("GET_ALL : " + req.method + ' ' + req.url);
-  db_a("GET_ALL RCVD: " + JSON.stringify(req.body));
-  db_a("GET_ALL SND: " + JSON.stringify(DATABASE));
+  db_api_calls("GET_ALL : " + req.method + ' ' + req.url);
+  db_api_calls("GET_ALL RCVD: " + JSON.stringify(req.body));
+  db_api_calls("GET_ALL SND: " + JSON.stringify(DATABASE));
 
-  return res.send(JSON.stringify(DATABASE));
+  return res.send(utils.db_print_json (db_getall, "res.end", DATABASE));
 
 });
 
@@ -548,8 +576,8 @@ router.get('/', function(req, res) {
 //
 router.delete('/:id', function(req, res) {
 
-  db_b("DELETE_BY_ID : " + req.method + ' ' + req.url);
-  db_b("DELETE_BY_ID : " + JSON.stringify(req.body));
+  db_api_calls("DELETE_BY_ID : " + req.method + ' ' + req.url);
+  db_api_calls("DELETE_BY_ID : " + JSON.stringify(req.body));
 
   validateRequest (req, res, true, function (err) {
 
@@ -559,16 +587,16 @@ router.delete('/:id', function(req, res) {
 
         if (!err) {
           if (employee) {
-            return res.end (JSON.stringify(employee));
+            return res.end (utils.db_print_json (db_delete_by_id, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_delete_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER));
           }
         } else {
-          return res.end(utils.db_print_json (db_create, "res.end", err));
+          return res.end(utils.db_print_json (db_delete_by_id, "res.end", err));
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_delete_by_id, "res.end", err));
     }
   });
 

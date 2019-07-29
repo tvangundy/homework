@@ -26,7 +26,7 @@ exports.clear_and_refill_const_array = function (const_array, newArray, callback
 //////////////////////////////////////////////////////////////////////////////////////////
 exports.remove_item_from_const_array_by_id = function (const_array, id, callback) {
 
-    var err = null;
+    var found_item = false;
     var newArray = [];
   
     var employee = null;
@@ -36,14 +36,19 @@ exports.remove_item_from_const_array_by_id = function (const_array, id, callback
       if (const_array[i].id != id) 
       {
         newArray.push (const_array[i]);
+        found_item = true;
       } else {
         employee = const_array[i];
       }
     }
   
-    exports.clear_and_refill_const_array (const_array, newArray, function (err) {
-      callback(err, employee);
-    });
+    if (found_item) {
+        exports.clear_and_refill_const_array (const_array, newArray, function (err) {
+            callback(err, employee);
+        });
+    } else {
+        callback(null, null);
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -53,24 +58,29 @@ exports.remove_item_from_const_array_by_id = function (const_array, id, callback
 //////////////////////////////////////////////////////////////////////////////////////////
 exports.replace_item_in_const_array_by_id = function (const_array, item, callback) {
 
-  var err = null;
+  var found_item = false;
   var newArray = [];
 
-  // Copy the original const array, skipping the item to remove
+  // Copy the original const array, replacing the item with the approriate id
   for (var i = 0; i < const_array.length; i++) {
 
     if (const_array[i].id == item.id) 
     {
-      newArray.push (item);
+        newArray.push (item);
+        found_item = true;
     } else {
-      console.log ("PUSHING : " + const_array[i]);
       newArray.push (const_array[i]);
     }
   }
 
-  exports.clear_and_refill_const_array (const_array, newArray, function (err) {
-    callback(err, item);
-  });
+  if (found_item) {
+    exports.clear_and_refill_const_array (const_array, newArray, function (err) {
+        callback(err, item);
+      });    
+  } else {
+    console.log ("NOT FOUND");
+    callback(null, null);
+  }
 }
 
 
