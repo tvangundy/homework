@@ -1,4 +1,6 @@
 'use strict';
+const utils = require('./utils.js');
+
 const check = require('check-types');
 const date = require('date-and-time');
 const express = require('express');
@@ -91,25 +93,6 @@ function lookup_error_code_by_id_async (id, callback) {
   callback(return_value);
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// Function: clear_and_refill_const_array
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-function clear_and_refill_const_array (const_array, newArray, callback) {
-
-  // Clear the const array
-  while (const_array.length) {
-    const_array.pop();
-  }
-
-  // Refill it
-  for (var i = 0; i < newArray.length; i++) {
-    const_array.push (newArray[i]);
-  }
-
-  callback(null);
-};
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -380,95 +363,6 @@ function createEmployeeRecord (req, res, callback) {
 
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// Function: print_employee
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-function print_employee(employee) {
-
-  db_b ("id : " + employee.id);
-  db_b ("firstName : " + employee.firstName);
-  db_b ("lastName : " + employee.lastName);
-  db_b ("hireDate : " + employee.hireDate);
-  db_b ("role : " + employee.role);
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// Function: remove_item_from_const_array_by_id
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-function remove_item_from_const_array_by_id (const_array, id, callback) {
-
-  var err = null;
-  var newArray = [];
-
-  var employee = null;
-
-  // Copy the original const array, skipping the item to remove
-  for (var i = 0; i < const_array.length; i++) {
-    if (const_array[i].id != id) 
-    {
-      newArray.push (const_array[i]);
-    } else {
-      employee = const_array[i];
-    }
-  }
-
-  clear_and_refill_const_array (DATABASE, newArray, function (err) {
-    callback(err, employee);
-  });
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// Function: replace_item_in_const_array_by_id
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-function replace_item_in_const_array_by_id (const_array, item, callback) {
-
-  var err = null;
-  var newArray = [];
-
-  console.log ("const_array.length = " + const_array.length.toString());
-
-  // Copy the original const array, skipping the item to remove
-  for (var i = 0; i < const_array.length; i++) {
-
-    console.log ("const_array[i].id = ", const_array[i].id);
-    console.log ("item.id = ", item.id);
-
-    if (const_array[i].id == item.id) 
-    {
-      newArray.push (item);
-    } else {
-      console.log ("PUSHING : " + const_array[i]);
-      newArray.push (const_array[i]);
-    }
-  }
-  // console.log ("const_array.length = " + const_array.length.toString());
-  // console.log ("const_array.length = " + const_array.length.toString());
-
-  clear_and_refill_const_array (DATABASE, newArray, function (err) {
-    callback(err, item);
-  });
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// Function: db_print_json
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-function db_print_json (db_function_name, message, value)
-{
-  var json_string = JSON.stringify(value);
-
-  db_function_name (message + " : " + json_string);
-  return json_string;
-}
 
 // CREATE
 //
@@ -491,19 +385,19 @@ router.post('/', function(req, res) {
             // Add the user to the local database object
             DATABASE.push (employee);
     
-            return res.end(db_print_json (db_create, "res.end", employee));
+            return res.end(utils.db_print_json (db_create, "res.end", employee));
           } else {
-            return res.end(db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
           }
     
         } else {
           var return_value = "{\"error\" :" + JSON.stringify(err) + "}"
     
-          return res.end(db_print_json (db_create, "res.end", return_value));
+          return res.end(utils.db_print_json (db_create, "res.end", return_value));
         }
       });
     } else {
-      return res.end(db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_create, "res.end", err));
     }
   });
 
@@ -529,25 +423,25 @@ router.put('/:id', function(req, res) {
             // Overwrite the default id that was generated 
             employee.id = req.body.id;
       
-            print_employee(employee);
+            utils.print_employee(db_b, employee);
       
-            replace_item_in_const_array_by_id (DATABASE, employee, function (err) {
+            utils.replace_item_in_const_array_by_id (DATABASE, employee, function (err) {
       
               if (!err) {
-                return res.end (db_print_json (db_create, "res.end", employee));
+                return res.end (utils.db_print_json (db_create, "res.end", employee));
               } else {
-                return res.end (db_print_json (db_create, "res.end", err));        
+                return res.end (utils.db_print_json (db_create, "res.end", err));        
               }
             });
           } else {
-            return res.end(db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
           }        
         } else {
-          return res.end (db_print_json (db_create, "res.end", err));        
+          return res.end (utils.db_print_json (db_create, "res.end", err));        
         }
       });
     } else {
-      return res.end(db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_create, "res.end", err));
     }
   });
 });
@@ -591,14 +485,14 @@ router.get('/:id', function(req, res) {
           if (employee) {
             return res.end (JSON.stringify(employee));
           } else {
-            return res.end(db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
           }
         } else {
-          return res.end(db_print_json (db_create, "res.end", err));
+          return res.end(utils.db_print_json (db_create, "res.end", err));
         }
       });
     } else {
-      return res.end(db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_create, "res.end", err));
     }
   });
 });
@@ -621,14 +515,14 @@ router.post('/getbyid', function(req, res) {
           if (employee) {
             return res.end (JSON.stringify(employee));
           } else {
-            return res.end(db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
           }
         } else {
-          return res.end(db_print_json (db_create, "res.end", err));
+          return res.end(utils.db_print_json (db_create, "res.end", err));
         }
       });
     } else {
-      return res.end(db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_create, "res.end", err));
     }
   });
 });
@@ -661,20 +555,20 @@ router.delete('/:id', function(req, res) {
 
     if (!err) {
 
-      remove_item_from_const_array_by_id (DATABASE, req.body.id, function (err, employee) {
+      utils.remove_item_from_const_array_by_id (DATABASE, req.body.id, function (err, employee) {
 
         if (!err) {
           if (employee) {
             return res.end (JSON.stringify(employee));
           } else {
-            return res.end(db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_create, "res.end", EMPLOYEE_NOT_FOUND));
           }
         } else {
-          return res.end(db_print_json (db_create, "res.end", err));
+          return res.end(utils.db_print_json (db_create, "res.end", err));
         }
       });
     } else {
-      return res.end(db_print_json (db_create, "res.end", err));
+      return res.end(utils.db_print_json (db_create, "res.end", err));
     }
   });
 
