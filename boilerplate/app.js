@@ -6,7 +6,7 @@ const port = parseInt(process.env.PORT || '3000');
 
 var debug = require('debug')('http')
   , http = require('http')
-  , name = 'My App';
+  , name = 'app';
 
 debug('booting %o', name); 
 

@@ -19,18 +19,9 @@ Persistent storage is not necessary, just use an in memory object to track emplo
 
 Use any npm modules you find useful.
 
-MTV:
-MTV: To run the webapp
-MTV: Use tvangundy/hypernode-cli:latest image with this command,
-MTV:
-MTV:    > docker run -it  -v $PWD:/var/www/hypernode-cli tvangundy/hypernode-cli:latest nodemon app.js
-MTV:
-MTV: To test the API
-MTV:
-MTV:    > hw_test help
-
 **Expected Endpoints**
-COMMAND: CREATE
+
+- CREATE
 
 POST http://localhost:3000/api/employees
 
@@ -53,28 +44,28 @@ POST http://localhost:3000/api/employees
 
             https://quotes.rest/qod
 
-COMMAND: REPLACE_BY_ID
+- REPLACE_BY_ID
 
 PUT http://localhost:3000/api/employees/:id
 
 - Replace the record corresponding to :id with the contents of the PUT body
 
 
-COMMAND: GET_BY_ID
+- GET_BY_ID
 
 GET http://localhost:3000/api/employees/:id
 
 - Return the record corresponding to the id parameter
 
 
-COMMAND: GET_ALL
+- GET_ALL
 
 GET http://localhost:3000/api/employees
 
 - Return all current records
 
 
-COMMAND: DELETE_BY_ID
+- DELETE_BY_ID
 
 DELETE http://localhost:3000/api/employees/:id
 
