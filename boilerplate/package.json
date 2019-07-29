@@ -10,6 +10,8 @@
     "check-types": "^9.0.1",
     "date-and-time": "^0.8.1",
     "debug": "^4.1.1",
-    "express": "~4.16.1"
+    "dotenv": "^8.0.0",
+    "express": "~4.16.1",
+    "grpc": "^1.22.2"
   }
 }
