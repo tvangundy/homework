@@ -25,48 +25,30 @@ const DATABASE = [];
 // Message Services
 //
 const MESSAGE_SERVICES = [
-  {"url":"https://ron-swanson-quotes.herokuapp.com/v2/quotes",
-   "access": "res.body[0]"},
-   {"url":"https://icanhazdadjoke.com",
-   "access": "res.body.joke"},
-   {"url":"https://quotes.rest/qod",
-   "access": "res.body.content.quotes[\"quote\"]"}
+    {"url":"https://ron-swanson-quotes.herokuapp.com/v2/quotes",
+    "access": "res.body[0]"},
+    {"url":"https://icanhazdadjoke.com",
+    "access": "res.body.joke"},
+    {"url":"https://quotes.rest/qod",
+    "access": "res.body.content.quotes[\"quote\"]"}
 ];
 
 //
 // Error codes that are caused by the server side
 //
 const ERROR_CODE_NOT_FOUND = {
-  "id": "ERROR_CODE_NOT_FOUND",
+    "id": "ERROR_CODE_NOT_FOUND",
     "return_json": {
     "status" : "550",
     "message" : "Valid Error Code Not Found : "
   }
 };
 
-const EMPLOYEE_NOT_FOUND = {
-  "id": "EMPLOYEE_NOT_FOUND",
+const SERVER_FAILURE = {
+  "id": "SERVER_FAILURE",
     "return_json": {
-    "status" : "551",
-    "message" : "Could not find employee and did not throw an error : "
-  }
-
-};
-
-const EMPLOYEE_NOT_FOUND_USER = {
-  "id": "EMPLOYEE_NOT_FOUND_USER",
-    "return_json": {
-    "status" : "475",
-    "message" : "Could not find employee with id : "
-  }
-
-};
-
-const FAILED_TO_CREATE_RECORD = {
-  "id": "FAILED_TO_CREATE_RECORD",
-    "return_json": {
-    "status" : "552",
-    "message" : "Internal error - unable to create record : "
+    "status" : "555",
+    "message" : "Internal error - unknown : "
   }
 };
 
@@ -80,10 +62,15 @@ const ERROR_CODES = [
       "status" : "450",
       "message" : "General usage error"
     }},
-    {"id": "RECORD_NOT_FOUND",
+    {"id": "EMPLOYEE_NOT_FOUND_USER",
       "return_json": {
-      "status" : "451",
-      "message" : "Could not find record : "
+      "status" : "475",
+      "message" : "Could not find employee with id : "
+    }},
+    {"id": "FAILED_TO_CREATE_RECORD",
+      "return_json": {
+      "status" : "552",
+      "message" : "Could not find employee and did not throw an error for id : "
     }},
     {"id": "NOT_A_STRING",
       "return_json": {
@@ -230,7 +217,7 @@ function find_record_by_id (const_array, id, callback) {
   if (employee) {
     callback (err, employee);
   } else {
-    create_err ("RECORD_NOT_FOUND", "", function (err) {
+    create_err ("EMPLOYEE_NOT_FOUND_USER", id, function (err) {
       callback (err);
     });
   }  
@@ -447,6 +434,7 @@ function createEmployeeRecord (req, res, set_defaults, callback) {
             message3: message3
           };
       
+          // To induce missing employee errors do
           // callback (err, null)
           callback (err, employee)
         });
@@ -465,11 +453,94 @@ function createEmployeeRecord (req, res, set_defaults, callback) {
       message3: req.body.message3
     };
 
+    // To induce missing employee errors do
     // callback (err, null)
     callback (err, employee)
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// Function: get_and_print_status
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function get_and_print_status (res, json_obj, db_function_name, callback) {
+
+  var json_string = JSON.stringify(json_obj);
+  var ret;
+
+  db_function_name (JSON.stringify(json_obj));
+
+  if (json_obj["status"] && json_obj["message"]) {
+
+    ret = {status: Number(json_obj['status']), statusMessage:json_obj['message'], message:JSON.stringify(json_obj['message'])};
+
+    res.statusMessage = ret.statusMessage;
+
+    db_function_name (JSON.stringify(ret));
+  
+    callback (ret);
+  
+  } else if (json_obj["message"]) {
+
+    ret = {status: 200, statusMessage:json_obj['message'], message:JSON.stringify(json_obj['message'])};
+  
+    res.statusMessage = ret.statusMessage;
+
+    db_function_name (JSON.stringify(ret));
+  
+    callback (ret);  
+  } else {
+
+    ret = {status: 200, statusMessage:null, message:JSON.stringify(json_obj)};
+
+    res.statusMessage = ret.statusMessage;
+
+    db_function_name (JSON.stringify(ret));
+
+    callback (ret);  
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// Function: prepare_response
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function prepare_response (res, json_obj, error_id, extra_message, db_function_name, callback) {
+
+  if (json_obj)
+  {
+    get_and_print_status (res, json_obj, db_function_name, function (ret) {
+      if (ret) {
+        callback (ret);
+      } else {
+  
+        create_err ("SERVER_FAILURE", "", function (err) {
+          get_and_print_status (res, err, db_function_name, function (ret) {
+            if (ret) {
+              callback (ret);
+            } else {
+              var ret = {status: 500, statusMessage:SERVER_FAILURE.return_json.message, message:JSON.stringify(SERVER_FAILURE.return_json)};
+              callback (ret);
+            }
+          });
+        });
+      }
+    });
+  } else {
+    create_err (error_id, extra_message, function (err) {
+      get_and_print_status (res, err, db_function_name, function (ret) {
+        if (ret) {
+          callback (ret);
+        } else {
+          var ret = {status: 500, statusMessage:SERVER_FAILURE.return_json.message, message:JSON.stringify(SERVER_FAILURE.return_json)};
+          callback (ret);
+        }
+      });
+    });
+  }
+}
 //////////////////////////////////////////////////////////////////////////////////////////
 //
 // API Functions
@@ -497,20 +568,25 @@ router.post('/', function(req, res) {
           if (employee) {
               // Add the user to the local database object
             DATABASE.push (employee);
-    
-            return res.end(utils.db_print_json (db_create, "res.end", employee));
+
+            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });
           } else {
-            return res.end(utils.db_print_json (db_create, "res.end", FAILED_TO_CREATE_RECORD.return_json));
+            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });
           }
-    
         } else {
-          var return_value = "{\"error\" :" + JSON.stringify(err) + "}"
-    
-          return res.end(utils.db_print_json (db_create, "res.end", return_value));
+          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+            return res.status(ret.status).send (ret.message);
+          });
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_create, "res.end", err));
+      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+        return res.status(ret.status).send (ret.message);
+      });    
     }
   });
 
@@ -542,20 +618,30 @@ router.put('/:id', function(req, res) {
             utils.replace_item_in_const_array_by_id (DATABASE, employee, function (err, item) {
       
               if (item) {
-                return res.end (utils.db_print_json (db_replace_by_id, "res.end", item));
+                prepare_response (res, item, null, req.body.id, db_api_calls, function (ret) {
+                  return res.status(ret.status).send (ret.message);
+                });    
               } else {
-                return res.end (utils.db_print_json (db_replace_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER.return_json));
+                prepare_response (res, null, "EMPLOYEE_NOT_FOUND_USER", req.body.id, db_api_calls, function (ret) {
+                  return res.status(ret.status).send (ret.message);
+                });    
               }
             });
           } else {
-            return res.end(utils.db_print_json (db_replace_by_id, "res.end", FAILED_TO_CREATE_RECORD.return_json));
+            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });    
           }        
         } else {
-          return res.end (utils.db_print_json (db_replace_by_id, "res.end", err));        
+          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+            return res.status(ret.status).send (ret.message);
+          });
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_replace_by_id, "res.end", err));
+      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+        return res.status(ret.status).send (ret.message);
+      });
     }
   });
 });
@@ -597,16 +683,24 @@ router.get('/:id', function(req, res) {
       find_record_by_id (DATABASE, req.body.id, function (err, employee) {
         if (!err) {
           if (employee) {
-            return res.end (utils.db_print_json (db_get_by_id, "res.end", employee));
+            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });    
           } else {
-            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND.return_json));
+            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });            
           }
         } else {
-          return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
+          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+            return res.status(ret.status).send (ret.message);
+          });
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
+      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+        return res.status(ret.status).send (ret.message);
+      });
     }
   });
 });
@@ -625,16 +719,24 @@ router.post('/getbyid', function(req, res) {
       find_record_by_id (DATABASE, req.body.id, function (err, employee) {
         if (!err) {
           if (employee) {
-            return res.end (utils.db_print_json (db_get_by_id, "res.end", employee));
+            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });      
           } else {
-            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND.return_json));
+            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });      
           }
         } else {
-          return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
+          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+            return res.status(ret.status).send (ret.message);
+          });
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
+      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+        return res.status(ret.status).send (ret.message);
+      });
     }
   });
 });
@@ -650,8 +752,9 @@ router.get('/', function(req, res) {
   db_api_calls("GET_ALL RCVD: " + JSON.stringify(req.body));
   db_api_calls("GET_ALL SND: " + JSON.stringify(DATABASE));
 
-  return res.send(utils.db_print_json (db_getall, "res.end", DATABASE));
-
+  prepare_response (res, DATABASE, null, 0, db_api_calls, function (ret) {
+    return res.status(ret.status).send (ret.message);
+  });
 });
 
 // DELETE_BY_ID
@@ -671,16 +774,24 @@ router.delete('/:id', function(req, res) {
 
         if (!err) {
           if (employee) {
-            return res.end (utils.db_print_json (db_delete_by_id, "res.end", employee));
+            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });          
           } else {
-            return res.end(utils.db_print_json (db_delete_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER.return_json));
+            prepare_response (res, null, "EMPLOYEE_NOT_FOUND_USER", req.body.id, db_api_calls, function (ret) {
+              return res.status(ret.status).send (ret.message);
+            });
           }
         } else {
-          return res.end(utils.db_print_json (db_delete_by_id, "res.end", err));
+          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+            return res.status(ret.status).send (ret.message);
+          });
         }
       });
     } else {
-      return res.end(utils.db_print_json (db_delete_by_id, "res.end", err));
+      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
+        return res.status(ret.status).send (ret.message);
+      });
     }
   });
 

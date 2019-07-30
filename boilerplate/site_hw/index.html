@@ -29,12 +29,21 @@
       }
 
       function xhttp_onload() {
-        // alert(`Error ${this.status}: ${this.statusText}`); // e.g. 404: Not Found
+        
         if (this.status != 200) { // analyze HTTP status of the response
-          // alert(`Error ${this.status}: ${this.statusText}`); // e.g. 404: Not Found
+          alert(`Error ${this.status}: ${this.responseText}`); // e.g. 404: Not Found
         } else { // show the result
           // alert(`Done, got ${this.response.length} bytes`); // responseText is the server
           getAll();
+        }
+      };
+
+      function xhttp_onload_getall() {
+        
+        if (this.status != 200) { // analyze HTTP status of the response
+          alert(`Error ${this.status}: ${this.responseText}`); // e.g. 404: Not Found
+        } else { // show the result
+          // alert(`Done, got ${this.response.length} bytes`); // responseText is the server
         }
       };
 
@@ -48,7 +57,7 @@
       };
 
       function xhttp_onerror () {
-        alert("Request failed");
+        alert("xhttp_onerror: Request failed");
       };
 
       function updateFields() {
@@ -58,86 +67,62 @@
             if (this.responseText != "") {
 
               var obj = JSON.parse(this.responseText);
-              
-                if (obj["status"]) {
-                  alert ("ERROR\n status:" + obj['status'] + "\n message:" + obj['message'] + "\n");
-                } else {
-
-                  var obj = JSON.parse(this.responseText);
-
-                  document.getElementById("id").value = obj.id;
-                  document.getElementById("firstName").value = obj.firstName;
-                  document.getElementById("lastName").value = obj.lastName;
-                  document.getElementById("hireDate").value = obj.hireDate;
-                  document.getElementById("role").value = obj.role;
-                  document.getElementById("message1").value = obj.message1;
-                  document.getElementById("message2").value = obj.message2;
-                  document.getElementById("message3").value = obj.message3;
-                }
+              document.getElementById("id").value = obj.id;
+              document.getElementById("firstName").value = obj.firstName;
+              document.getElementById("lastName").value = obj.lastName;
+              document.getElementById("hireDate").value = obj.hireDate;
+              document.getElementById("role").value = obj.role;
+              document.getElementById("message1").value = obj.message1;
+              document.getElementById("message2").value = obj.message2;
+              document.getElementById("message3").value = obj.message3;              
             }
-        } else {
-          if (this.readyState == 4) {
-            alert ("Status = " + this.status);
-          }
-        }
+        } 
       }
 
       function updateTable() {
       
-          if (this.readyState == 4 && this.status == 200) {
+        if (this.readyState == 4 && this.status == 200) {
       
-              //  alert (this.responseText);
-      
-              var obj = JSON.parse(this.responseText);
-              
-              if (obj["status"]) {
-                alert ("ERROR\n status:" + obj['status'] + "\n message:" + obj['message'] + "\n");
-              } else {
-                var customers = new Array();
+          var obj = JSON.parse(this.responseText);
+          
+          var customers = new Array();
+          
+          customers.push(["id", "firstName", "lastName", "hireDate", "role", "message1", "message2", "message3"]);              
+          obj.forEach(element => {
+            customers.push([element.id, element.firstName, element.lastName, element.hireDate, element.role, element.message1, element.message2, element.message3]);
+          });
 
-              customers.push(["id", "firstName", "lastName", "hireDate", "role", "message1", "message2", "message3"]);              
-        
-              obj.forEach(element => {
-                customers.push([element.id, element.firstName, element.lastName, element.hireDate, element.role, element.message1, element.message2, element.message3]);
-              });
-        
-              //create a HTML Table element.
-              var table = document.createElement("TABLE");
-              table.border = "1";
-        
-              //Get the count of columns.
-              var columnCount = customers[0].length;
-        
-              //Add the header row.
-              var row = table.insertRow(-1);
-              for (var i = 0; i < columnCount; i++) {
-                  var headerCell = document.createElement("TH");
-                  headerCell.innerHTML = customers[0][i];
-                  row.appendChild(headerCell);
-              }
-        
-              //Add the data rows.
-              for (var i = 1; i < customers.length; i++) {
-                  row = table.insertRow(-1);
-                  for (var j = 0; j < columnCount; j++) {
-                      var cell = row.insertCell(-1);
-                      cell.innerHTML = customers[i][j];
-                  }
-              }
-        
-              var dvTable = document.getElementById("dvTable");
-              dvTable.innerHTML = "";
-              dvTable.appendChild(table);
+          //create a HTML Table element.
+          var table = document.createElement("TABLE");
+          table.border = "1";
+          //Get the count of columns.
+          var columnCount = customers[0].length;
+          //Add the header row.
+          var row = table.insertRow(-1);
+          for (var i = 0; i < columnCount; i++) {
+              var headerCell = document.createElement("TH");
+              headerCell.innerHTML = customers[0][i];
+              row.appendChild(headerCell);
+          }
+          //Add the data rows.
+          for (var i = 1; i < customers.length; i++) {
+              row = table.insertRow(-1);
+              for (var j = 0; j < columnCount; j++) {
+                  var cell = row.insertCell(-1);
+                  cell.innerHTML = customers[i][j];
               }
           }
+          var dvTable = document.getElementById("dvTable");
+          dvTable.innerHTML = "";
+          dvTable.appendChild(table);
+        }
       };
       
       function create() {
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = updateTable;
           xhttp.onload = xhttp_onload
-          // xhttp.onprogress = xhttp_onprogress
-          // xhttp.onerror = xhttp_onerror
+          xhttp.onerror = xhttp_onerror
       
           var json = buildData ();
       
@@ -162,6 +147,8 @@
       function getByID() {
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = updateFields;
+          xhttp.onload = xhttp_onload
+          xhttp.onerror = xhttp_onerror
 
           var json = buildData ();
 
@@ -181,6 +168,8 @@
       function getAll() {
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = updateTable;
+          xhttp.onload = xhttp_onload_getall
+          xhttp.onerror = xhttp_onerror
 
           xhttp.open("GET", "http://localhost:3000/api/employees", true);
           xhttp.setRequestHeader("Content-type", "application/json");
@@ -191,6 +180,8 @@
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = updateFields;
           xhttp.onload = xhttp_onload
+          xhttp.onload = xhttp_onload
+          xhttp.onerror = xhttp_onerror
         
           var json = buildData ();
 
