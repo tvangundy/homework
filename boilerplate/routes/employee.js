@@ -40,7 +40,7 @@ const ERROR_CODE_NOT_FOUND = {
     "id": "ERROR_CODE_NOT_FOUND",
     "return_json": {
     "status" : "550",
-    "message" : "Valid Error Code Not Found : "
+    "message" : "Valid Error Code Not Found id: "
   }
 };
 
@@ -100,7 +100,7 @@ const ERROR_CODES = [
     {"id": "INVALID_ROLE",
       "return_json": {
       "status" : "457",
-      "message" : "Invalid role : "
+      "message" : "Invalid role.  Valid roles are [CEO | VP | MANAGER | LACKEY]. role: "
     }},
     {"id": "INVALID_NUMBER_OF_CEOS",
       "return_json": {
@@ -189,7 +189,9 @@ function create_err (error_code, message, callback) {
   
       callback (newErr);
     } else {
-      callback (ERROR_CODE_NOT_FOUND.return_json);
+      let newErr = JSON.parse(JSON.stringify(ERROR_CODE_NOT_FOUND.return_json));
+      newErr.message = newErr.message + message;
+      callback (newErr);
     }
   });        
 }
