@@ -19,10 +19,11 @@ const db_api_calls = require('debug')('employee:db_api_calls')
 // this can cause problems if the id's start to be reused
 const MAX_RECORDS = 100;
   
-// NOTE: Since this is const, there are potential issues with multiple
-//       requests changing the database at the same time
 const DATABASE = [];
 
+//
+// Message Services
+//
 const MESSAGE_SERVICES = [
   {"url":"https://ron-swanson-quotes.herokuapp.com/v2/quotes",
    "access": "res.body[0]"},
@@ -32,6 +33,9 @@ const MESSAGE_SERVICES = [
    "access": "res.body.content.quotes[\"quote\"]"}
 ];
 
+//
+// Error codes that are caused by the server side
+//
 const ERROR_CODE_NOT_FOUND = {
   "id": "ERROR_CODE_NOT_FOUND",
     "return_json": {
@@ -65,6 +69,10 @@ const FAILED_TO_CREATE_RECORD = {
     "message" : "Internal error - unable to create record : "
   }
 };
+
+//
+// Error codes that are caused by the client side
+//
 
 const ERROR_CODES = [
     {"id": "default",
@@ -122,16 +130,17 @@ const ERROR_CODES = [
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: get_message_from_url
+// Function: get_message_from_service
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function get_message_from_url (service, callback) { 
+function get_message_from_service (service, callback) { 
 
-  console.log ("get_message_from_url-", service.url);
+  console.log ("get_message_from_service-", service.url);
 
   if (service.url == "https://quotes.rest/qod") {
     callback (null, "Bypassing service until time expires");
   } else {
+
     request(service.url, { json: true }, (err, res, body) => {
     
       // db_messaging ("res.body = ", res.body);
@@ -156,10 +165,10 @@ function get_message_from_url (service, callback) {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: lookup_error_code_by_id_async
+// Function: lookup_error_code_by_id
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function lookup_error_code_by_id_async (id, callback) {
+function lookup_error_code_by_id (id, callback) {
 
   var return_value = null;
 
@@ -185,7 +194,7 @@ function lookup_error_code_by_id_async (id, callback) {
 //////////////////////////////////////////////////////////////////////////////////////////
 function create_err (error_code, message, callback) {
 
-  lookup_error_code_by_id_async (error_code, function (err) {
+  lookup_error_code_by_id (error_code, function (err) {
       
     if (err) {
       let newErr = JSON.parse(JSON.stringify(err));
@@ -222,7 +231,7 @@ function find_record_by_id (const_array, id, callback) {
     callback (err, employee);
   } else {
     create_err ("RECORD_NOT_FOUND", "", function (err) {
-      callback (err, null);
+      callback (err);
     });
   }  
 }
@@ -254,6 +263,7 @@ function validateRequest (req, res, id_only, callback) {
 
     if (!failed_key && req.body.hasOwnProperty(key)) {
 
+      // If id_only selected then only check the id field
       if (id_only) {
         if (key == "id") {
           if (check.string(req.body[key])) {
@@ -261,14 +271,13 @@ function validateRequest (req, res, id_only, callback) {
           } else {
             failed_key = key;
           }
+        }
+      } else {
+        if (check.string(req.body[key])) {
+           db_check ("STRING CHECK: passed for key " + key);
         } else {
-          if (check.string(req.body[key])) {
-             db_check ("STRING CHECK: passed for key " + key);
-          } else {
-            failed_key = key;
-            db_check ("STRING CHECK: failed for " + key);
-          }    
-        }  
+          failed_key = key;
+        }    
       }
     }
   }
@@ -279,7 +288,7 @@ function validateRequest (req, res, id_only, callback) {
     db_check ("STRING CHECK FAILED: failed for " + failed_key);
 
     create_err ("NOT_A_STRING", failed_key, function (err) {
-      callback (err, null);
+      callback (err);
     });
 
   } else if (id_only) {
@@ -344,7 +353,7 @@ function validateRequest (req, res, id_only, callback) {
                       db_check ("CEO COUNT CHECK: failed: ceo_count = " + ceo_count.toString());
 
                       create_err ("INVALID_NUMBER_OF_CEOS", ceo_count.toString(), function (err) {
-                        callback (err, null);
+                        callback (err);
                       });                  
                     }
                   } else {
@@ -361,7 +370,7 @@ function validateRequest (req, res, id_only, callback) {
                 db_check ("ROLE CHECK: failed on " + req.body.role);
 
                 create_err ("INVALID_ROLE", req.body.role, function (err) {
-                  callback (err, null);
+                  callback (err);
                 });                  
               }
             } else {
@@ -370,7 +379,7 @@ function validateRequest (req, res, id_only, callback) {
                 db_check ("ROLE CHECK: role is missing ");
 
                 create_err ("MISSING_FIELD_IN_MESSAGE", "role", function (err) {
-                  callback (err, null);
+                  callback (err);
                 });                  
             }
           } else {
@@ -378,7 +387,7 @@ function validateRequest (req, res, id_only, callback) {
             db_check ("HIREDATE DATE CHECK: failed on " + req.body.hireDate);                      
 
             create_err ("INVALID_FUTURE_DATE", req.body.hireDate, function (err) {
-              callback (err, null);
+              callback (err);
             });                          
           }          
         } else {
@@ -386,7 +395,7 @@ function validateRequest (req, res, id_only, callback) {
           db_check ("HIREDATE FORMAT CHECK: failed for " + req.body.hireDate);
 
           create_err ("INVALID_DATE", req.body.hireDate, function (err) {
-            callback (err, null);
+            callback (err);
           });                          
         }
       } else {
@@ -394,7 +403,7 @@ function validateRequest (req, res, id_only, callback) {
         db_check ("HIREDATE FORMAT DASHES CHECK: failed for " + req.body.hireDate);
     
         create_err ("INVALID_DATE_FORMAT_DASHES", req.body.hireDate, function (err) {
-          callback (err, null);
+          callback (err);
         });                          
       }
     } else {
@@ -402,7 +411,7 @@ function validateRequest (req, res, id_only, callback) {
       db_check ("HIREDATE FIELD MISSING CHECK: failed for " + req.body.hireDate);
 
       create_err ("MISSING_FIELD_IN_MESSAGE", "hireDate", function (err) {
-        callback (err, null);
+        callback (err);
       });                          
     }    
   }
@@ -423,9 +432,9 @@ function createEmployeeRecord (req, res, set_defaults, callback) {
     // TODO: Check that id is not already used and return error if it is
     var id = Math.floor((Math.random() * MAX_RECORDS) + 1).toString();
 
-    get_message_from_url (MESSAGE_SERVICES[0], function (err, message1) {  
-      get_message_from_url (MESSAGE_SERVICES[1], function (err, message2) {
-        get_message_from_url (MESSAGE_SERVICES[2], function (err, message3) {
+    get_message_from_service (MESSAGE_SERVICES[0], function (err, message1) {  
+      get_message_from_service (MESSAGE_SERVICES[1], function (err, message2) {
+        get_message_from_service (MESSAGE_SERVICES[2], function (err, message3) {
   
           var employee = {
             id: id,

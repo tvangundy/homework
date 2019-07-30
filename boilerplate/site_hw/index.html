@@ -29,10 +29,12 @@
       }
 
       function xhttp_onload() {
-        if (xhttp.status != 200) { // analyze HTTP status of the response
-          alert(`Error ${xhttp.status}: ${xhttp.statusText}`); // e.g. 404: Not Found
+        // alert(`Error ${this.status}: ${this.statusText}`); // e.g. 404: Not Found
+        if (this.status != 200) { // analyze HTTP status of the response
+          // alert(`Error ${this.status}: ${this.statusText}`); // e.g. 404: Not Found
         } else { // show the result
-          alert(`Done, got ${xhttp.response.length} bytes`); // responseText is the server
+          // alert(`Done, got ${this.response.length} bytes`); // responseText is the server
+          getAll();
         }
       };
 
@@ -134,8 +136,8 @@
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = updateTable;
           xhttp.onload = xhttp_onload
-          xhttp.onprogress = xhttp_onprogress
-          xhttp.onerror = xhttp_onerror
+          // xhttp.onprogress = xhttp_onprogress
+          // xhttp.onerror = xhttp_onerror
       
           var json = buildData ();
       
@@ -147,6 +149,8 @@
       function replaceByID() {
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = updateFields;
+          xhttp.onload = xhttp_onload
+          xhttp.onerror = xhttp_onerror
           
           var json = buildData ();
       
@@ -186,6 +190,7 @@
       function deleteByID() {
           var xhttp = new XMLHttpRequest();
           xhttp.onreadystatechange = updateFields;
+          xhttp.onload = xhttp_onload
         
           var json = buildData ();
 
@@ -205,21 +210,21 @@
       <button type="submit" onclick="deleteByID()">deleteByID</button>
       <form>
           id:<br>
-          <input id="id" type="text" name="id"><br>
+          <input id="id" type="text" name="id" placeholder="id"><br>
           firstName:<br>
-          <input id="firstName" type="text" name="firstName"><br>
+          <input id="firstName" type="text" name="firstName" placeholder="firstName"><br>
           lastName:<br>
-          <input id="lastName" type="text" name="lastName"><br>
+          <input id="lastName" type="text" name="lastName" placeholder="lastName"><br>
           hireDate:<br>
-          <input id="hireDate" type="text" name="hireDate"><br>
+          <input id="hireDate" type="text" name="hireDate" placeholder="hireDate"><br>
           role:<br>
-          <input id="role" type="text" name="role"><br>
+          <input id="role" type="text" name="role" placeholder="role"><br>
           message1:<br>
-          <input id="message1" type="text" name="message1"><br>
+          <input id="message1" type="text" name="message1" placeholder="message1"><br>
           message2:<br>
-          <input id="message2" type="text" name="message2"><br>
+          <input id="message2" type="text" name="message2" placeholder="message2"><br>
           message3:<br>
-          <input id="message3" type="text" name="message3"><br>
+          <input id="message3" type="text" name="message3" placeholder="message3"><br>
       </form>
     </div>
     <hr />
