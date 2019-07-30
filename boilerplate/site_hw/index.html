@@ -86,7 +86,7 @@
           var obj = JSON.parse(this.responseText);
           
           var customers = new Array();
-          
+
           customers.push(["id", "firstName", "lastName", "hireDate", "role", "message1", "message2", "message3"]);              
           obj.forEach(element => {
             customers.push([element.id, element.firstName, element.lastName, element.hireDate, element.role, element.message1, element.message2, element.message3]);
@@ -154,13 +154,24 @@
 
           // MTV NOTE: 
           //
-          // This is a workaround.
+          // DEBUGGING GET_BY_ID
           //
-          // The GET version of this command works when called from curl
-          // but it does not work when called from the browser (Safari or Chrome)
+          // The desired url for getting an employee by id is this,
+          //
+          // GET http://localhost:3000/api/employees/:id
+          //
+          // The GET version of this command works when called from curl 
+          // but it does not work when called from index.html in the browser 
+          // Safari and Chrome fail the same way.
+          //
+          // The temporary workaround is to use POST instead
+          //
+          // POST http://localhost:3000/api/employees/getbyid
+          //
+          // Both url targets are supported by the server
           //            
-          xhttp.open("POST", "http://localhost:3000/api/employees/getByID", true);
           // xhttp.open("GET", "http://localhost:3000/api/employees/:id", true);
+          xhttp.open("POST", "http://localhost:3000/api/employees/getByID", true);
           xhttp.setRequestHeader("Content-type", "application/json");
           xhttp.send(json);
       }

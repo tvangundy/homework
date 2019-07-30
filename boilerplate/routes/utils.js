@@ -1,3 +1,4 @@
+const errors = require('./errors.js');
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -117,9 +118,96 @@ exports.printEmployee = function (db_function_name, employee) {
     db_function_name ("role : " + employee.role);
 }
     
-    
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// Function: findRecordByID
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+exports.findRecordByID = function (const_array, id, callback) {
+
+  var err = null;
+  var employee = null;
+
+  for (var i = 0; i < const_array.length; i++) {
+
+    if (const_array[i].id == id) {
+      employee = const_array[i];
+      break;
+    }
+  }
+
+  if (employee) {
+    callback (err, employee);
+  } else {
+    errors.createErr ("EMPLOYEE_NOT_FOUND_USER", id, function (err) {
+      callback (err);
+    });
+  }  
+}    
   
-    
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// Function: generateID
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+exports.generateID = function (const_array, max_id, callback) {
+
+  var guess_failed = false;
+  var valid_id = false;
+  var guess_count = 0;
+
+  // Generate a random number in range given
+  var id = Math.floor((Math.random() * max_id) + 1);
+
+  // Try to guess 10 times
+  while (!valid_id && guess_count < 10) {
+
+    // Check to see if the id is already used
+    for (var i = 0; i < const_array.length; i++) {
+      if (const_array[i].id == id.toString()) {
+        guess_failed = true;
+      }
+    }
+
+    if (!guess_failed) {
+      valid_id = true;
+    } else {
+      guess_failed = false;
+      guess_count = guess_count + 1;
+      id = Math.floor((Math.random() * max_id) + 1);
+    }
+  }
+
+  // If the id is still not valid then switch to manual mode
+  if (!valid_id) {
+
+    for (id = 1; id < max_id; id++) {
+
+      // Check to see if the id is already used
+      for (var i = 0; i < const_array.length; i++) {
+        if (const_array[i].id == id.toString()) {
+          guess_failed = true;
+        }
+      }
+
+      if (!guess_failed) {
+        valid_id = true;
+        break;
+      } 
+    }
+  }
+
+  // If the id is still not valid then give up and report
+  if (!valid_id) {
+    errors.createErr ("MAX_RECORDS_LIMIT_REACHED", id, function (err) {
+      callback (err, max_id);
+    });
+  } else {
+    callback(null, id.toString());
+  }  
+}
+
+
     
     
   
