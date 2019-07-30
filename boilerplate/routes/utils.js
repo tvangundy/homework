@@ -24,7 +24,7 @@ exports.clear_and_refill_const_array = function (const_array, newArray, callback
 // Function: remove_item_from_const_array_by_id
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-exports.remove_item_from_const_array_by_id = function (const_array, id, callback) {
+exports.remove_item_from_const_array_by_id = function (const_array, id, db_print_method, callback) {
 
     var found_item = false;
     var newArray = [];
@@ -33,21 +33,27 @@ exports.remove_item_from_const_array_by_id = function (const_array, id, callback
   
     // Copy the original const array, skipping the item to remove
     for (var i = 0; i < const_array.length; i++) {
-      if (const_array[i].id != id) 
+
+      if (const_array[i].id == id) 
       {
-        newArray.push (const_array[i]);
+        db_print_method ("Found item with ID:" + id);
+
         found_item = true;
-      } else {
         employee = const_array[i];
+      } else {
+        newArray.push (const_array[i]);
       }
     }
   
+    db_print_method ("newArray.length:" + newArray.length);
+
     if (found_item) {
         exports.clear_and_refill_const_array (const_array, newArray, function (err) {
             callback(err, employee);
         });
     } else {
-        callback(null, null);
+      db_print_method ("Did not find item with ID", id);
+      callback(null, null);
     }
 }
 

@@ -1,5 +1,6 @@
 'use strict';
 const utils = require('./utils.js');
+const request = require('request');
 
 const check = require('check-types');
 const date = require('date-and-time');
@@ -11,7 +12,8 @@ const db_api_calls = require('debug')('employee:db_api_calls')
   , db_replace_by_id = require('debug')('employee:db_replace_by_id')
   , db_get_by_id = require('debug')('employee:db_get_by_id')
   , db_getall = require('debug')('employee:db_getall')
-  , db_delete_by_id = require('debug')('employee:db_delete_by_id');
+  , db_delete_by_id = require('debug')('employee:db_delete_by_id')
+  , db_messaging = require('debug')('employee:db_messaging');
 
 // Temporary hack to limit randomization of id's
 // this can cause problems if the id's start to be reused
@@ -20,6 +22,15 @@ const MAX_RECORDS = 100;
 // NOTE: Since this is const, there are potential issues with multiple
 //       requests changing the database at the same time
 const DATABASE = [];
+
+const MESSAGE_SERVICES = [
+  {"url":"https://ron-swanson-quotes.herokuapp.com/v2/quotes",
+   "access": "res.body[0]"},
+   {"url":"https://icanhazdadjoke.com",
+   "access": "res.body.joke"},
+   {"url":"https://quotes.rest/qod",
+   "access": "res.body.content.quotes[\"quote\"]"}
+];
 
 const ERROR_CODE_NOT_FOUND = {
   "id": "ERROR_CODE_NOT_FOUND",
@@ -111,6 +122,40 @@ const ERROR_CODES = [
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
+// Function: get_message_from_url
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+function get_message_from_url (service, callback) { 
+
+  console.log ("get_message_from_url-", service.url);
+
+  if (service.url == "https://quotes.rest/qod") {
+    callback (null, "Bypassing service until time expires");
+  } else {
+    request(service.url, { json: true }, (err, res, body) => {
+    
+      // db_messaging ("res.body = ", res.body);
+  
+      if (service.access == "res.body[0]") {
+        callback (err, res.body[0]);
+      } else if (service.access == "res.body.joke") {
+        callback (err, res.body.joke);
+      } else {
+  
+        // db_messaging ("res.body.contents = " + res.body.contents);
+  
+        if ("error" in res.body && "message" in res.body.error) {
+          callback (err, res.body.error.message);
+        } else {
+          callback (err, res.body.contents.quotes.quote);
+        }
+      }
+    });
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
 // Function: lookup_error_code_by_id_async
 //
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -148,7 +193,7 @@ function create_err (error_code, message, callback) {
   
       callback (newErr);
     } else {
-      callback (ERROR_CODE_NOT_FOUND);
+      callback (ERROR_CODE_NOT_FOUND.return_json);
     }
   });        
 }
@@ -369,24 +414,51 @@ function validateRequest (req, res, id_only, callback) {
 // Function: createEmployeeRecord
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function createEmployeeRecord (req, res, callback) {
+function createEmployeeRecord (req, res, set_defaults, callback) {
   
   var err = null;
 
-  var id = Math.floor((Math.random() * MAX_RECORDS) + 1).toString();
+  if (set_defaults) {
 
-  // TODO: Check that id is not already used and return error if it is
-  var employee = {
-    id: id,
-    firstName: req.body.firstName,
-    lastName: req.body.lastName,
-    hireDate: req.body.hireDate,
-    role: req.body.role
-  };
+    // TODO: Check that id is not already used and return error if it is
+    var id = Math.floor((Math.random() * MAX_RECORDS) + 1).toString();
 
-  // callback (err, null)
-  callback (err, employee)
+    get_message_from_url (MESSAGE_SERVICES[0], function (err, message1) {  
+      get_message_from_url (MESSAGE_SERVICES[1], function (err, message2) {
+        get_message_from_url (MESSAGE_SERVICES[2], function (err, message3) {
+  
+          var employee = {
+            id: id,
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+            hireDate: req.body.hireDate,
+            role: req.body.role,
+            message1: message1,
+            message2: message2,
+            message3: message3
+          };
+      
+          // callback (err, null)
+          callback (err, employee)
+        });
+      });
+    });    
+  
+  } else {
+    var employee = {
+      id: req.body.id,
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      hireDate: req.body.hireDate,
+      role: req.body.role,
+      message1: req.body.message1,
+      message2: req.body.message2,
+      message3: req.body.message3
+    };
 
+    // callback (err, null)
+    callback (err, employee)
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -409,17 +481,17 @@ router.post('/', function(req, res) {
 
     if (!err) {
 
-      createEmployeeRecord (req, res, function (err, employee) {
+      createEmployeeRecord (req, res, true, function (err, employee) {
 
         if (!err) {
     
           if (employee) {
-            // Add the user to the local database object
+              // Add the user to the local database object
             DATABASE.push (employee);
     
             return res.end(utils.db_print_json (db_create, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_create, "res.end", FAILED_TO_CREATE_RECORD));
+            return res.end(utils.db_print_json (db_create, "res.end", FAILED_TO_CREATE_RECORD.return_json));
           }
     
         } else {
@@ -448,23 +520,26 @@ router.put('/:id', function(req, res) {
 
     if (!err) {
 
-      createEmployeeRecord (req, res, function (err, employee) {
+      createEmployeeRecord (req, res, false, function (err, employee) {
 
         if (!err) {
           if (employee) {
-            // Overwrite the default id that was generated 
-            employee.id = req.body.id;
+            // Overwrite the default values that were generated
+            employee.id = req.body.id;            
+            employee.message1 = req.body.message1;
+            employee.message2 = req.body.message2;
+            employee.message3 = req.body.message3;
       
             utils.replace_item_in_const_array_by_id (DATABASE, employee, function (err, item) {
       
               if (item) {
                 return res.end (utils.db_print_json (db_replace_by_id, "res.end", item));
               } else {
-                return res.end (utils.db_print_json (db_replace_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER));
+                return res.end (utils.db_print_json (db_replace_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER.return_json));
               }
             });
           } else {
-            return res.end(utils.db_print_json (db_replace_by_id, "res.end", FAILED_TO_CREATE_RECORD));
+            return res.end(utils.db_print_json (db_replace_by_id, "res.end", FAILED_TO_CREATE_RECORD.return_json));
           }        
         } else {
           return res.end (utils.db_print_json (db_replace_by_id, "res.end", err));        
@@ -515,7 +590,7 @@ router.get('/:id', function(req, res) {
           if (employee) {
             return res.end (utils.db_print_json (db_get_by_id, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND.return_json));
           }
         } else {
           return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
@@ -543,7 +618,7 @@ router.post('/getbyid', function(req, res) {
           if (employee) {
             return res.end (utils.db_print_json (db_get_by_id, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND));
+            return res.end(utils.db_print_json (db_get_by_id, "res.end", EMPLOYEE_NOT_FOUND.return_json));
           }
         } else {
           return res.end(utils.db_print_json (db_get_by_id, "res.end", err));
@@ -583,13 +658,13 @@ router.delete('/:id', function(req, res) {
 
     if (!err) {
 
-      utils.remove_item_from_const_array_by_id (DATABASE, req.body.id, function (err, employee) {
+      utils.remove_item_from_const_array_by_id (DATABASE, req.body.id, db_delete_by_id, function (err, employee) {
 
         if (!err) {
           if (employee) {
             return res.end (utils.db_print_json (db_delete_by_id, "res.end", employee));
           } else {
-            return res.end(utils.db_print_json (db_delete_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER));
+            return res.end(utils.db_print_json (db_delete_by_id, "res.end", EMPLOYEE_NOT_FOUND_USER.return_json));
           }
         } else {
           return res.end(utils.db_print_json (db_delete_by_id, "res.end", err));
