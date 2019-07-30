@@ -80,22 +80,22 @@ const ERROR_CODES = [
     {"id": "INVALID_DATE_FORMAT_DASHES",
       "return_json": {
       "status" : "453",
-      "message" : "Invalid date format, should be YYYY-MM-DD : "
+      "message" : "Invalid date format, should be YYYY-MM-DD.  date: "
     }},
     {"id": "INVALID_DATE_FORMAT",
       "return_json": {
       "status" : "454",
-      "message" : "Invalid date format : "
+      "message" : "Invalid date format, should be YYYY-MM-DD.  date: "
     }},
     {"id": "INVALID_DATE",
       "return_json": {
       "status" : "455",
-      "message" : "Invalid date : "
+      "message" : "Invalid date - Out of Range.  date : "
     }},
     {"id": "INVALID_FUTURE_DATE",
       "return_json": {
       "status" : "456",
-      "message" : "Invalid date, it's in the future : "
+      "message" : "Invalid date, it's in the future. date : "
     }},  
     {"id": "INVALID_ROLE",
       "return_json": {
@@ -117,12 +117,12 @@ const ERROR_CODES = [
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: get_message_from_service
+// Function: getMessageFromService
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function get_message_from_service (service, callback) { 
+function getMessageFromService (service, callback) { 
 
-  console.log ("get_message_from_service-", service.url);
+  console.log ("getMessageFromService-", service.url);
 
   if (service.url == "https://quotes.rest/qod") {
     callback (null, "Bypassing service until time expires");
@@ -152,10 +152,10 @@ function get_message_from_service (service, callback) {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: lookup_error_code_by_id
+// Function: lookupErrorCodeByID
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function lookup_error_code_by_id (id, callback) {
+function lookupErrorCodeByID (id, callback) {
 
   var return_value = null;
 
@@ -176,12 +176,12 @@ function lookup_error_code_by_id (id, callback) {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: create_err
+// Function: createErr
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function create_err (error_code, message, callback) {
+function createErr (error_code, message, callback) {
 
-  lookup_error_code_by_id (error_code, function (err) {
+  lookupErrorCodeByID (error_code, function (err) {
       
     if (err) {
       let newErr = JSON.parse(JSON.stringify(err));
@@ -200,10 +200,10 @@ function create_err (error_code, message, callback) {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: find_record_by_id
+// Function: findRecordByID
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function find_record_by_id (const_array, id, callback) {
+function findRecordByID (const_array, id, callback) {
 
   var err = null;
   var employee = null;
@@ -219,7 +219,7 @@ function find_record_by_id (const_array, id, callback) {
   if (employee) {
     callback (err, employee);
   } else {
-    create_err ("EMPLOYEE_NOT_FOUND_USER", id, function (err) {
+    createErr ("EMPLOYEE_NOT_FOUND_USER", id, function (err) {
       callback (err);
     });
   }  
@@ -276,7 +276,7 @@ function validateRequest (req, res, id_only, callback) {
     // STRING CHECK FAILED
     db_check ("STRING CHECK FAILED: failed for " + failed_key);
 
-    create_err ("NOT_A_STRING", failed_key, function (err) {
+    createErr ("NOT_A_STRING", failed_key, function (err) {
       callback (err);
     });
 
@@ -341,7 +341,7 @@ function validateRequest (req, res, id_only, callback) {
                       // --- CEO COUNT CHECK FAILED ---
                       db_check ("CEO COUNT CHECK: failed: ceo_count = " + ceo_count.toString());
 
-                      create_err ("INVALID_NUMBER_OF_CEOS", ceo_count.toString(), function (err) {
+                      createErr ("INVALID_NUMBER_OF_CEOS", ceo_count.toString(), function (err) {
                         callback (err);
                       });                  
                     }
@@ -358,7 +358,7 @@ function validateRequest (req, res, id_only, callback) {
                 // --- ROLE CHECK FAILED ---
                 db_check ("ROLE CHECK: failed on " + req.body.role);
 
-                create_err ("INVALID_ROLE", req.body.role, function (err) {
+                createErr ("INVALID_ROLE", req.body.role, function (err) {
                   callback (err);
                 });                  
               }
@@ -367,7 +367,7 @@ function validateRequest (req, res, id_only, callback) {
                 // --- MISSING ROLE ---
                 db_check ("ROLE CHECK: role is missing ");
 
-                create_err ("MISSING_FIELD_IN_MESSAGE", "role", function (err) {
+                createErr ("MISSING_FIELD_IN_MESSAGE", "role", function (err) {
                   callback (err);
                 });                  
             }
@@ -375,7 +375,7 @@ function validateRequest (req, res, id_only, callback) {
             // --- HIREDATE DATE CHECK FAILED ---
             db_check ("HIREDATE DATE CHECK: failed on " + req.body.hireDate);                      
 
-            create_err ("INVALID_FUTURE_DATE", req.body.hireDate, function (err) {
+            createErr ("INVALID_FUTURE_DATE", req.body.hireDate, function (err) {
               callback (err);
             });                          
           }          
@@ -383,7 +383,7 @@ function validateRequest (req, res, id_only, callback) {
           // --- HIREDATE FORMAT CHECK FAILED ---
           db_check ("HIREDATE FORMAT CHECK: failed for " + req.body.hireDate);
 
-          create_err ("INVALID_DATE", req.body.hireDate, function (err) {
+          createErr ("INVALID_DATE", req.body.hireDate, function (err) {
             callback (err);
           });                          
         }
@@ -391,7 +391,7 @@ function validateRequest (req, res, id_only, callback) {
         // --- HIREDATE FORMAT DASHES CHECK FAILED ---
         db_check ("HIREDATE FORMAT DASHES CHECK: failed for " + req.body.hireDate);
     
-        create_err ("INVALID_DATE_FORMAT_DASHES", req.body.hireDate, function (err) {
+        createErr ("INVALID_DATE_FORMAT_DASHES", req.body.hireDate, function (err) {
           callback (err);
         });                          
       }
@@ -399,7 +399,7 @@ function validateRequest (req, res, id_only, callback) {
       // --- HIREDATE FIELD MISSING ---
       db_check ("HIREDATE FIELD MISSING CHECK: failed for " + req.body.hireDate);
 
-      create_err ("MISSING_FIELD_IN_MESSAGE", "hireDate", function (err) {
+      createErr ("MISSING_FIELD_IN_MESSAGE", "hireDate", function (err) {
         callback (err);
       });                          
     }    
@@ -421,9 +421,9 @@ function createEmployeeRecord (req, res, set_defaults, callback) {
     // TODO: Check that id is not already used and return error if it is
     var id = Math.floor((Math.random() * MAX_RECORDS) + 1).toString();
 
-    get_message_from_service (MESSAGE_SERVICES[0], function (err, message1) {  
-      get_message_from_service (MESSAGE_SERVICES[1], function (err, message2) {
-        get_message_from_service (MESSAGE_SERVICES[2], function (err, message3) {
+    getMessageFromService (MESSAGE_SERVICES[0], function (err, message1) {  
+      getMessageFromService (MESSAGE_SERVICES[1], function (err, message2) {
+        getMessageFromService (MESSAGE_SERVICES[2], function (err, message3) {
   
           var employee = {
             id: id,
@@ -463,81 +463,81 @@ function createEmployeeRecord (req, res, set_defaults, callback) {
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: get_and_print_status
+// Function: createStatusResponse
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function get_and_print_status (res, json_obj, db_function_name, callback) {
+function createStatusResponse (res, json_obj, db_function_name, callback) {
 
   var json_string = JSON.stringify(json_obj);
-  var ret;
+  var response;
 
   db_function_name (JSON.stringify(json_obj));
 
   if (json_obj["status"] && json_obj["message"]) {
 
-    ret = {status: Number(json_obj['status']), statusMessage:json_obj['message'], message:JSON.stringify(json_obj['message'])};
+    response = {status: Number(json_obj['status']), statusMessage:json_obj['message'], message:JSON.stringify(json_obj['message'])};
 
-    res.statusMessage = ret.statusMessage;
+    res.statusMessage = response.statusMessage;
 
-    db_function_name (JSON.stringify(ret));
+    db_function_name (JSON.stringify(response));
   
-    callback (ret);
+    callback (response);
   
   } else if (json_obj["message"]) {
 
-    ret = {status: 200, statusMessage:json_obj['message'], message:JSON.stringify(json_obj['message'])};
+    response = {status: 200, statusMessage:json_obj['message'], message:JSON.stringify(json_obj['message'])};
   
-    res.statusMessage = ret.statusMessage;
+    res.statusMessage = response.statusMessage;
 
-    db_function_name (JSON.stringify(ret));
+    db_function_name (JSON.stringify(response));
   
-    callback (ret);  
+    callback (response);  
   } else {
 
-    ret = {status: 200, statusMessage:null, message:JSON.stringify(json_obj)};
+    response = {status: 200, statusMessage:null, message:JSON.stringify(json_obj)};
 
-    res.statusMessage = ret.statusMessage;
+    res.statusMessage = response.statusMessage;
 
-    db_function_name (JSON.stringify(ret));
+    db_function_name (JSON.stringify(response));
 
-    callback (ret);  
+    callback (response);  
   }
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: prepare_response
+// Function: prepareResponse
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-function prepare_response (res, json_obj, error_id, extra_message, db_function_name, callback) {
+function prepareResponse (res, json_obj, error_id, extra_message, db_function_name, callback) {
 
   if (json_obj)
   {
-    get_and_print_status (res, json_obj, db_function_name, function (ret) {
-      if (ret) {
-        callback (ret);
+    createStatusResponse (res, json_obj, db_function_name, function (response) {
+      if (response) {
+        callback (response);
       } else {
   
-        create_err ("SERVER_FAILURE", "", function (err) {
-          get_and_print_status (res, err, db_function_name, function (ret) {
-            if (ret) {
-              callback (ret);
+        createErr ("SERVER_FAILURE", "", function (err) {
+          createStatusResponse (res, err, db_function_name, function (response) {
+            if (response) {
+              callback (response);
             } else {
-              var ret = {status: 500, statusMessage:SERVER_FAILURE.return_json.message, message:JSON.stringify(SERVER_FAILURE.return_json)};
-              callback (ret);
+              var response = {status: 500, statusMessage:SERVER_FAILURE.return_json.message, message:JSON.stringify(SERVER_FAILURE.return_json)};
+              callback (response);
             }
           });
         });
       }
     });
   } else {
-    create_err (error_id, extra_message, function (err) {
-      get_and_print_status (res, err, db_function_name, function (ret) {
-        if (ret) {
-          callback (ret);
+    createErr (error_id, extra_message, function (err) {
+      createStatusResponse (res, err, db_function_name, function (response) {
+        if (response) {
+          callback (response);
         } else {
-          var ret = {status: 500, statusMessage:SERVER_FAILURE.return_json.message, message:JSON.stringify(SERVER_FAILURE.return_json)};
-          callback (ret);
+          var response = {status: 500, statusMessage:SERVER_FAILURE.return_json.message, message:JSON.stringify(SERVER_FAILURE.return_json)};
+          callback (response);
         }
       });
     });
@@ -571,23 +571,23 @@ router.post('/', function(req, res) {
               // Add the user to the local database object
             DATABASE.push (employee);
 
-            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, employee, null, 0, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });
           } else {
-            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });
           }
         } else {
-          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-            return res.status(ret.status).send (ret.message);
+          prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+            return res.status(response.status).send (response.message);
           });
         }
       });
     } else {
-      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-        return res.status(ret.status).send (ret.message);
+      prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+        return res.status(response.status).send (response.message);
       });    
     }
   });
@@ -617,32 +617,32 @@ router.put('/:id', function(req, res) {
             employee.message2 = req.body.message2;
             employee.message3 = req.body.message3;
       
-            utils.replace_item_in_const_array_by_id (DATABASE, employee, function (err, item) {
+            utils.replaceItemInArray (DATABASE, employee, function (err, item) {
       
               if (item) {
-                prepare_response (res, item, null, req.body.id, db_api_calls, function (ret) {
-                  return res.status(ret.status).send (ret.message);
+                prepareResponse (res, item, null, req.body.id, db_api_calls, function (response) {
+                  return res.status(response.status).send (response.message);
                 });    
               } else {
-                prepare_response (res, null, "EMPLOYEE_NOT_FOUND_USER", req.body.id, db_api_calls, function (ret) {
-                  return res.status(ret.status).send (ret.message);
+                prepareResponse (res, null, "EMPLOYEE_NOT_FOUND_USER", req.body.id, db_api_calls, function (response) {
+                  return res.status(response.status).send (response.message);
                 });    
               }
             });
           } else {
-            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });    
           }        
         } else {
-          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-            return res.status(ret.status).send (ret.message);
+          prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+            return res.status(response.status).send (response.message);
           });
         }
       });
     } else {
-      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-        return res.status(ret.status).send (ret.message);
+      prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+        return res.status(response.status).send (response.message);
       });
     }
   });
@@ -682,26 +682,26 @@ router.get('/:id', function(req, res) {
 
     if (!err) {
 
-      find_record_by_id (DATABASE, req.body.id, function (err, employee) {
+      findRecordByID (DATABASE, req.body.id, function (err, employee) {
         if (!err) {
           if (employee) {
-            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, employee, null, 0, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });    
           } else {
-            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });            
           }
         } else {
-          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-            return res.status(ret.status).send (ret.message);
+          prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+            return res.status(response.status).send (response.message);
           });
         }
       });
     } else {
-      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-        return res.status(ret.status).send (ret.message);
+      prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+        return res.status(response.status).send (response.message);
       });
     }
   });
@@ -718,26 +718,26 @@ router.post('/getbyid', function(req, res) {
 
     if (!err) {
 
-      find_record_by_id (DATABASE, req.body.id, function (err, employee) {
+      findRecordByID (DATABASE, req.body.id, function (err, employee) {
         if (!err) {
           if (employee) {
-            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, employee, null, 0, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });      
           } else {
-            prepare_response (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, null, "FAILED_TO_CREATE_RECORD", req.body.id, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });      
           }
         } else {
-          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-            return res.status(ret.status).send (ret.message);
+          prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+            return res.status(response.status).send (response.message);
           });
         }
       });
     } else {
-      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-        return res.status(ret.status).send (ret.message);
+      prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+        return res.status(response.status).send (response.message);
       });
     }
   });
@@ -754,8 +754,8 @@ router.get('/', function(req, res) {
   db_api_calls("GET_ALL RCVD: " + JSON.stringify(req.body));
   db_api_calls("GET_ALL SND: " + JSON.stringify(DATABASE));
 
-  prepare_response (res, DATABASE, null, 0, db_api_calls, function (ret) {
-    return res.status(ret.status).send (ret.message);
+  prepareResponse (res, DATABASE, null, 0, db_api_calls, function (response) {
+    return res.status(response.status).send (response.message);
   });
 });
 
@@ -772,27 +772,27 @@ router.delete('/:id', function(req, res) {
 
     if (!err) {
 
-      utils.remove_item_from_const_array_by_id (DATABASE, req.body.id, db_delete_by_id, function (err, employee) {
+      utils.removeItemFromArray (DATABASE, req.body.id, db_delete_by_id, function (err, employee) {
 
         if (!err) {
           if (employee) {
-            prepare_response (res, employee, null, 0, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, employee, null, 0, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });          
           } else {
-            prepare_response (res, null, "EMPLOYEE_NOT_FOUND_USER", req.body.id, db_api_calls, function (ret) {
-              return res.status(ret.status).send (ret.message);
+            prepareResponse (res, null, "EMPLOYEE_NOT_FOUND_USER", req.body.id, db_api_calls, function (response) {
+              return res.status(response.status).send (response.message);
             });
           }
         } else {
-          prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-            return res.status(ret.status).send (ret.message);
+          prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+            return res.status(response.status).send (response.message);
           });
         }
       });
     } else {
-      prepare_response (res, err, null, 0, db_api_calls, function (ret) {
-        return res.status(ret.status).send (ret.message);
+      prepareResponse (res, err, null, 0, db_api_calls, function (response) {
+        return res.status(response.status).send (response.message);
       });
     }
   });

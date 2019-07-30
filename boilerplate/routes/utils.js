@@ -1,10 +1,10 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: clear_and_refill_const_array
+// Function: clearAndRefillArray
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-exports.clear_and_refill_const_array = function (const_array, newArray, callback) {
+exports.clearAndRefillArray = function (const_array, newArray, callback) {
 
     // Clear the const array
     while (const_array.length) {
@@ -21,10 +21,10 @@ exports.clear_and_refill_const_array = function (const_array, newArray, callback
   
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: remove_item_from_const_array_by_id
+// Function: removeItemFromArray
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-exports.remove_item_from_const_array_by_id = function (const_array, id, db_print_method, callback) {
+exports.removeItemFromArray = function (const_array, id, db_print_method, callback) {
 
     var found_item = false;
     var newArray = [];
@@ -48,7 +48,7 @@ exports.remove_item_from_const_array_by_id = function (const_array, id, db_print
     db_print_method ("newArray.length:" + newArray.length);
 
     if (found_item) {
-        exports.clear_and_refill_const_array (const_array, newArray, function (err) {
+        exports.clearAndRefillArray (const_array, newArray, function (err) {
             callback(err, employee);
         });
     } else {
@@ -59,10 +59,10 @@ exports.remove_item_from_const_array_by_id = function (const_array, id, db_print
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: replace_item_in_const_array_by_id
+// Function: replaceItemInArray
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-exports.replace_item_in_const_array_by_id = function (const_array, item, callback) {
+exports.replaceItemInArray = function (const_array, item, callback) {
 
   var found_item = false;
   var newArray = [];
@@ -80,7 +80,7 @@ exports.replace_item_in_const_array_by_id = function (const_array, item, callbac
   }
 
   if (found_item) {
-    exports.clear_and_refill_const_array (const_array, newArray, function (err) {
+    exports.clearAndRefillArray (const_array, newArray, function (err) {
         callback(err, item);
       });    
   } else {
@@ -105,10 +105,10 @@ exports.db_print_json = function (db_function_name, message, value)
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Function: print_employee
+// Function: printEmployee
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-exports.print_employee = function (db_function_name, employee) {
+exports.printEmployee = function (db_function_name, employee) {
 
     db_function_name ("id : " + employee.id);
     db_function_name ("firstName : " + employee.firstName);
