@@ -21,8 +21,6 @@ Use any npm modules you find useful.
 
 **Expected Endpoints**
 
-- CREATE
-
 POST http://localhost:3000/api/employees
 
 - Create a new record using a randomly generated value as the unique identifier (i.e. _id field).  Validate that the following fields are included in the POST body and have the right type/format as posted below:
@@ -44,28 +42,20 @@ POST http://localhost:3000/api/employees
 
             https://quotes.rest/qod
 
-- REPLACE_BY_ID
-
 PUT http://localhost:3000/api/employees/:id
 
 - Replace the record corresponding to :id with the contents of the PUT body
 
-
-- GET_BY_ID
 
 GET http://localhost:3000/api/employees/:id
 
 - Return the record corresponding to the id parameter
 
 
-- GET_ALL
-
 GET http://localhost:3000/api/employees
 
 - Return all current records
 
-
-- DELETE_BY_ID
 
 DELETE http://localhost:3000/api/employees/:id
 
