@@ -1,3 +1,11 @@
+
+**FYI**
+
+The code from this repository is running in a pod on a Kubernetes cluster.  
+
+> goto http://www.homework.toddvg.com
+
+
 **TASK**
 
 - Create a node app that implements a set of REST APIs allowing CRUD functionality for an employee resource.
